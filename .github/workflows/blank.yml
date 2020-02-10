@@ -1,0 +1,93 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run a one-line script
+      run: echo Hello, world!
+    - name: Run a multi-line script
+      run: |
+        echo Add other actions to build,
+        echo test, and deploy your project.
+        
+        
+#!/bin/bash
+#getip
+#connect wy.cn
+FILE=delegated-apnic-latest
+if [ ! -f $FILE ];then
+        wget http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest
+fi
+grep "apnic|CN|ipv4" $FILE | awk -F "|" '{print $4,$5}' > IP.txt
+AB=`cat IP.txt | wc -l`
+pow=32
+i=1
+while(($i<=$AB));do
+        IP=`sed -n ${i}p IP.txt | awk '{print $1}'`
+        HOST=`sed -n ${i}p IP.txt | awk '{print $2}'`
+        ERHOST=`echo "obase=2;$HOST" | bc`
+        HOSTL=`echo ${#ERHOST}`
+        let BU=$pow-$HOSTL
+        ZQIAN="11111111111111111111111111111111"
+        QIAN=`echo ${ZQIAN:0:$BU}`
+        MASK=`echo $QIAN$ERHOST`
+        STRA=`echo ${MASK:0:8}`
+        STRB=`echo ${MASK:8:8}`
+        STRC=`echo ${MASK:16:8}`
+        STRD=`echo ${MASK:24:8}`
+        MASKA=`echo "ibase=2;$STRA" | bc`
+        MASKB=`echo "ibase=2;$STRB" | bc`
+        MASKC=`echo "ibase=2;$STRC" | bc`
+        MASKD=`echo "ibase=2;$STRD" | bc`
+        NETMASK=`echo $MASKA.$MASKB.$MASKC.$MASKD`
+        BIT=`echo $MASK | grep -o '1' | wc -l`
+        NET=`whois -h whois.apnic.net $IP | grep "mnt-by"`
+        NUM_A=`echo $NET | grep 'CHINA' | wc -l`
+        NUM_B=`echo $NET | grep 'CNCGROUP' | wc -l`
+        NUM_C=`echo $NET | grep 'CERNET' | wc -l`
+        NUM_D=`echo $NET | grep 'CMCC' | wc -l`
+        if(($NUM_A>0));then
+                echo $IP/$NETMASK ................CHINATELECOM
+                echo $IP/$NETMASK >> CHINATELECOM.TXT
+                let i++
+                continue
+        fi
+        if(($NUM_A>0));then
+                echo $IP/$NETMASK ................CHINATELECOM
+                echo $IP/$NETMASK >> CHINATELECOM.TXT
+                let i++
+                continue
+        fi
+        if(($NUM_B>0));then
+                echo $IP/$NETMASK ................CNCGROUP
+                echo $IP/$NETMASK >> CNCGROUP.TXT
+                let i++
+                continue
+        fi
+        if(($NUM_C>0));then
+                echo $IP/$NETMASK ................CERNET
+                echo $IP/$NETMASK >> CERNET.TXT
+                let i++
+                continue
+        fi
+        if(($NUM_D>0));then
+                echo $IP/$NETMASK ................CMCC
+                echo $IP/$NETMASK >> CMCC.TXT
+                let i++
+                continue
+        fi
+        let res=$NUM_A+$NUM_B+$NUM_C+$NUM_D
+        if(($res==0));then
+                echo $IP/$NETMASK ................OTHER
+                echo $IP/$NETMASK >> OTHER.TXT
+                let i++
+        fi
+done
+rm -rf IP.txt $FILE
+
